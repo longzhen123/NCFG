@@ -14,22 +14,16 @@ class NCFG(nn.Module):
 
         super(NCFG, self).__init__()
         self.dim = dim
-        rec_user_embedding_mat = t.randn(n_user, dim)
         entity_embedding_mat = t.randn(n_entity, dim)
         relation_embedding_mat = t.randn(n_relation, dim)
-        rec_item_embedding_mat = t.randn(n_item, dim)
 
         nn.init.xavier_uniform_(entity_embedding_mat)
         nn.init.xavier_uniform_(relation_embedding_mat)
-        nn.init.xavier_uniform_(rec_item_embedding_mat)
-        nn.init.xavier_uniform_(rec_user_embedding_mat)
 
         self.entity_embedding_mat = nn.Parameter(entity_embedding_mat)
-        self.rec_user_embedding_mat = nn.Parameter(rec_user_embedding_mat)
         self.relation_embedding_mat = nn.Parameter(relation_embedding_mat)
-        self.rec_item_embedding_mat = nn.Parameter(rec_item_embedding_mat)
         self.L = L
-        self.rnn = nn.RNN(2*dim, dim, num_layers=1)
+        self.rnn = nn.RNN(2*dim, dim, num_layers=1, nonlinearity='relu')
 
     def forward(self, pairs, history_dict, ripple_sets):
 
@@ -37,11 +31,9 @@ class NCFG(nn.Module):
         items = [pair[1] for pair in pairs]
 
         heads_list, relations_list, tails_list = self.get_head_relation_and_tail(items, ripple_sets)
-        user_embeddings = self.rec_user_embedding_mat[users] + self.get_user_kg_embedding(users, history_dict)
-        item_embeddings = self.get_item_kg_embedding(items, heads_list, relations_list, tails_list) + self.rec_item_embedding_mat[items]
 
-        # user_embeddings = self.get_user_kg_embedding(users, history_dict)
-        # item_embeddings = self.get_item_kg_embedding(items, heads_list, relations_list, tails_list)
+        user_embeddings = self.get_user_kg_embedding(users, history_dict)
+        item_embeddings = self.get_item_kg_embedding(items, heads_list, relations_list, tails_list)
 
         predict = (user_embeddings * item_embeddings).sum(dim=1)
         return t.sigmoid(predict)
@@ -79,7 +71,7 @@ class NCFG(nn.Module):
 
     def get_item_kg_embedding(self, items, heads_list, relations_list, tails_list):
 
-        o_list = []
+        o_list = [self.entity_embedding_mat[items]]
 
         for i in range(self.L):
             head_embeddings = self.entity_embedding_mat[heads_list[i]].reshape(len(items), -1, self.dim)
@@ -99,7 +91,7 @@ class NCFG(nn.Module):
 
             o_list.append(o_embeddings)
 
-        return sum(o_list) + self.entity_embedding_mat[items]
+        return sum(o_list)
 
 
 def eval_topk(model, rec, history_dict, ripple_sets, topk):
