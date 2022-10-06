@@ -10,7 +10,7 @@ from src.load_base import load_data, get_records
 
 class NCFG(nn.Module):
 
-    def __init__(self, dim, n_entity, n_relation, L, n_user, n_item):
+    def __init__(self, dim, n_entity, n_relation, L):
 
         super(NCFG, self).__init__()
         self.dim = dim
@@ -201,7 +201,7 @@ def train(args, is_topk=False):
     train_records = get_records(train_set)
     ripple_sets = get_ripple_set(range(n_item), kg_dict, args.L, args.K_v)
     history_dict = get_history(train_records, args.K_u)
-    model = NCFG(args.dim, n_entity, n_relation, args.L, n_user, n_item)
+    model = NCFG(args.dim, n_entity, n_relation, args.L)
     if t.cuda.is_available():
         model = model.to(args.device)
 
